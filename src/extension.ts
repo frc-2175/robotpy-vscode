@@ -18,7 +18,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('robotpy.sync', () => executeRobotPyCommand('sync')),
         vscode.commands.registerCommand('robotpy.sim', () => executeRobotPyCommand('sim')),
-        vscode.commands.registerCommand('robotpy.deploy', () => executeRobotPyCommand('deploy'))
+        vscode.commands.registerCommand('robotpy.deploy', () => executeRobotPyCommand('deploy')),
+        vscode.commands.registerCommand('robotpy.deploySkipTests', () => executeRobotPyCommand('deploy --skip-tests'))
     );
 
     // Check if this is a RobotPy project when activated

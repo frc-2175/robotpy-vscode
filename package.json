@@ -29,10 +29,35 @@
       {
         "command": "robotpy.deploy",
         "title": "RobotPy: Deploy",
-        "icon": "$(rocket)"
+        "icon": {
+          "dark": "$(robot)",
+          "light": "$(robot)"
+        }
+      },
+      {
+        "command": "robotpy.deploySkipTests",
+        "title": "RobotPy: Deploy (Skip Tests)",
+        "icon": "$(robot)"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "robotpy.deployMenu",
+        "label": "Deploy",
+        "icon": "$(robot)"
       }
     ],
     "menus": {
+      "robotpy.deployMenu": [
+        {
+          "command": "robotpy.deploy",
+          "group": "1_deploy@1"
+        },
+        {
+          "command": "robotpy.deploySkipTests",
+          "group": "1_deploy@2"
+        }
+      ],
       "editor/title": [
         {
           "command": "robotpy.sync",
@@ -45,9 +70,17 @@
           "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
         },
         {
-          "command": "robotpy.deploy",
+          "submenu": "robotpy.deployMenu",
           "group": "navigation",
           "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "robotpy.deploy"
+        },
+        {
+          "command": "robotpy.deploySkipTests"
         }
       ]
     }
