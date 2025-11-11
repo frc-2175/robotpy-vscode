@@ -11,9 +11,12 @@ let outputChannel: vscode.OutputChannel;
 let robotpyTerminal: vscode.Terminal | undefined;
 
 const VENV_DIR = '.venv';
+const ROBOTPY_DOCS_URL = 'https://docs.wpilib.org/en/stable/docs/zero-to-robot/step-2/python-setup.html';
+const TERMINAL_NAME = 'RobotPy';
+const OUTPUT_CHANNEL_NAME = 'RobotPy';
 
 export function activate(context: vscode.ExtensionContext) {
-    outputChannel = vscode.window.createOutputChannel('RobotPy');
+    outputChannel = vscode.window.createOutputChannel(OUTPUT_CHANNEL_NAME);
 
     // Register commands
     context.subscriptions.push(
@@ -33,15 +36,12 @@ export function deactivate() {
     }
 }
 
-function getBasePythonCommand(): string[] {
-    const platform = os.platform();
+function isWindows(): boolean {
+    return os.platform() === 'win32';
+}
 
-    if (platform === 'win32') {
-        return ['py', '-3'];
-    } else {
-        // macOS and Linux
-        return ['python3'];
-    }
+function getBasePythonCommand(): string[] {
+    return isWindows() ? ['py', '-3'] : ['python3'];
 }
 
 function getVenvPath(rootPath: string): string {
@@ -50,24 +50,16 @@ function getVenvPath(rootPath: string): string {
 
 function getVenvPythonPath(rootPath: string): string {
     const venvPath = getVenvPath(rootPath);
-    const platform = os.platform();
-
-    if (platform === 'win32') {
-        return path.join(venvPath, 'Scripts', 'python.exe');
-    } else {
-        return path.join(venvPath, 'bin', 'python');
-    }
+    return isWindows()
+        ? path.join(venvPath, 'Scripts', 'python.exe')
+        : path.join(venvPath, 'bin', 'python');
 }
 
 function getVenvPipPath(rootPath: string): string {
     const venvPath = getVenvPath(rootPath);
-    const platform = os.platform();
-
-    if (platform === 'win32') {
-        return path.join(venvPath, 'Scripts', 'pip.exe');
-    } else {
-        return path.join(venvPath, 'bin', 'pip');
-    }
+    return isWindows()
+        ? path.join(venvPath, 'Scripts', 'pip.exe')
+        : path.join(venvPath, 'bin', 'pip');
 }
 
 function venvExists(rootPath: string): boolean {
@@ -75,7 +67,7 @@ function venvExists(rootPath: string): boolean {
     return fs.existsSync(venvPython);
 }
 
-function logCommandOutput(result: { stdout?: string; stderr?: string }) {
+function logCommandOutput(result: { stdout?: string; stderr?: string }): void {
     if (result.stdout) {
         outputChannel.appendLine(result.stdout);
     }
@@ -84,15 +76,24 @@ function logCommandOutput(result: { stdout?: string; stderr?: string }) {
     }
 }
 
+function handleCommandError(error: unknown, context: string): void {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    outputChannel.appendLine(`${context}: ${errorMessage}`);
+    logCommandOutput(error as any);
+}
+
+function buildRobotPyCommand(rootPath: string, args: string): string {
+    const pythonPath = getVenvPythonPath(rootPath);
+    return `"${pythonPath}" -m robotpy ${args}`;
+}
+
 function getRobotPyTerminal(rootPath: string): vscode.Terminal {
-    // Check if existing terminal is still alive
     if (robotpyTerminal && vscode.window.terminals.includes(robotpyTerminal)) {
         return robotpyTerminal;
     }
 
-    // Create a new terminal if needed
     robotpyTerminal = vscode.window.createTerminal({
-        name: 'RobotPy',
+        name: TERMINAL_NAME,
         cwd: rootPath
     });
 
@@ -109,37 +110,30 @@ async function checkRobotPyProject(): Promise<boolean> {
     const pyprojectPath = path.join(rootPath, 'pyproject.toml');
 
     try {
-        // Check if pyproject.toml exists
         await vscode.workspace.fs.stat(vscode.Uri.file(pyprojectPath));
 
-        // Read the file to check if it's a robotpy project
         const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(pyprojectPath));
         const content = Buffer.from(fileContent).toString('utf8');
 
         if (content.includes('robotpy')) {
-            // This appears to be a RobotPy project, ensure venv and robotpy are set up
             const isReady = await ensureRobotPyEnvironment(rootPath);
 
             if (isReady) {
-                // Automatically run sync when opening the project
                 await autoRunSync(rootPath);
             }
 
             return true;
         }
     } catch (error) {
-        // pyproject.toml doesn't exist or can't be read
         return false;
     }
 
     return false;
 }
 
-async function autoRunSync(rootPath: string) {
-    // Run sync automatically in the background
-    const pythonPath = getVenvPythonPath(rootPath);
-    const updateCmd = `"${pythonPath}" -m robotpy project update-robotpy`;
-    const syncCmd = `"${pythonPath}" -m robotpy sync`;
+async function autoRunSync(rootPath: string): Promise<void> {
+    const updateCmd = buildRobotPyCommand(rootPath, 'project update-robotpy');
+    const syncCmd = buildRobotPyCommand(rootPath, 'sync');
 
     outputChannel.appendLine('\n=== Auto-running sync on project open ===');
     outputChannel.appendLine(`Running: ${updateCmd}`);
@@ -147,16 +141,12 @@ async function autoRunSync(rootPath: string) {
 
     try {
         const terminal = getRobotPyTerminal(rootPath);
-
-        // Don't show the terminal automatically - let it run in background
         terminal.sendText(updateCmd);
         terminal.sendText(syncCmd);
 
         outputChannel.appendLine('Auto-sync started in background terminal');
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        outputChannel.appendLine(`Auto-sync error: ${errorMessage}`);
-        // Don't show error dialog for auto-sync, just log it
+        handleCommandError(error, 'Auto-sync error');
     }
 }
 
@@ -167,8 +157,9 @@ async function setPythonInterpreter(rootPath: string): Promise<void> {
     try {
         await config.update('defaultInterpreterPath', pythonPath, vscode.ConfigurationTarget.Workspace);
         outputChannel.appendLine(`Configured Python extension to use: ${pythonPath}`);
-    } catch (error: any) {
-        outputChannel.appendLine(`Note: Could not configure Python extension: ${error.message}`);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        outputChannel.appendLine(`Note: Could not configure Python extension: ${errorMessage}`);
     }
 }
 
@@ -187,15 +178,11 @@ async function createVenv(rootPath: string): Promise<boolean> {
 
         outputChannel.appendLine('Virtual environment created successfully.\n');
 
-        // Configure Python extension to use the venv
         await setPythonInterpreter(rootPath);
 
         return true;
-    } catch (error: any) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        outputChannel.appendLine(`Failed to create virtual environment: ${errorMessage}`);
-        logCommandOutput(error);
-
+    } catch (error) {
+        handleCommandError(error, 'Failed to create virtual environment');
         vscode.window.showErrorMessage('Failed to create virtual environment. Please ensure Python 3 is installed.');
         return false;
     }
@@ -215,18 +202,14 @@ async function installRobotPy(rootPath: string): Promise<boolean> {
 
         outputChannel.appendLine('\nRobotPy installed successfully.');
         return true;
-    } catch (error: any) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        outputChannel.appendLine(`\nFailed to install RobotPy: ${errorMessage}`);
-        logCommandOutput(error);
-
+    } catch (error) {
+        handleCommandError(error, '\nFailed to install RobotPy');
         vscode.window.showErrorMessage('Failed to install RobotPy. Check the output for details.');
         return false;
     }
 }
 
 async function ensureRobotPyEnvironment(rootPath: string): Promise<boolean> {
-    // Check if venv exists
     if (!venvExists(rootPath)) {
         const result = await vscode.window.showInformationMessage(
             'RobotPy requires a virtual environment. Would you like to create one?',
@@ -243,42 +226,37 @@ async function ensureRobotPyEnvironment(rootPath: string): Promise<boolean> {
             return false;
         }
 
-        // After creating venv, install robotpy
         return await installRobotPy(rootPath);
     }
 
-    // Venv exists, ensure Python extension is configured to use it
     await setPythonInterpreter(rootPath);
 
-    // Check if robotpy is installed
     return await checkRobotPyInstallation(rootPath);
 }
 
-function isRobotPyInstalled(rootPath: string): boolean {
+function getSitePackagesPath(rootPath: string): string | null {
     const venvPath = getVenvPath(rootPath);
-    const platform = os.platform();
 
-    // Check for robotpy in site-packages
-    let sitePackagesPath: string;
-    if (platform === 'win32') {
-        sitePackagesPath = path.join(venvPath, 'Lib', 'site-packages', 'robotpy');
-    } else {
-        // macOS and Linux - need to find the python version directory
-        const libPath = path.join(venvPath, 'lib');
-        if (!fs.existsSync(libPath)) {
-            return false;
-        }
-
-        // Find python3.x directory
-        const pythonDirs = fs.readdirSync(libPath).filter(dir => dir.startsWith('python3.'));
-        if (pythonDirs.length === 0) {
-            return false;
-        }
-
-        sitePackagesPath = path.join(libPath, pythonDirs[0], 'site-packages', 'robotpy');
+    if (isWindows()) {
+        return path.join(venvPath, 'Lib', 'site-packages', 'robotpy');
     }
 
-    return fs.existsSync(sitePackagesPath);
+    const libPath = path.join(venvPath, 'lib');
+    if (!fs.existsSync(libPath)) {
+        return null;
+    }
+
+    const pythonDirs = fs.readdirSync(libPath).filter(dir => dir.startsWith('python3.'));
+    if (pythonDirs.length === 0) {
+        return null;
+    }
+
+    return path.join(libPath, pythonDirs[0], 'site-packages', 'robotpy');
+}
+
+function isRobotPyInstalled(rootPath: string): boolean {
+    const sitePackagesPath = getSitePackagesPath(rootPath);
+    return sitePackagesPath !== null && fs.existsSync(sitePackagesPath);
 }
 
 async function checkRobotPyInstallation(rootPath: string): Promise<boolean> {
@@ -300,80 +278,69 @@ async function checkRobotPyInstallation(rootPath: string): Promise<boolean> {
     if (result === 'Yes') {
         return await installRobotPy(rootPath);
     } else if (result === 'View Installation Guide') {
-        vscode.env.openExternal(vscode.Uri.parse('https://docs.wpilib.org/en/stable/docs/zero-to-robot/step-2/python-setup.html'));
+        vscode.env.openExternal(vscode.Uri.parse(ROBOTPY_DOCS_URL));
     }
 
     return false;
 }
 
-async function executeRobotPySync() {
+async function getWorkspaceRootAndEnsureReady(): Promise<string | null> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
         vscode.window.showErrorMessage('No workspace folder open');
-        return;
+        return null;
     }
 
     const rootPath = workspaceFolders[0].uri.fsPath;
-
-    // Ensure venv and robotpy are set up before running command
     const isReady = await ensureRobotPyEnvironment(rootPath);
-    if (!isReady) {
+
+    return isReady ? rootPath : null;
+}
+
+async function executeRobotPySync(): Promise<void> {
+    const rootPath = await getWorkspaceRootAndEnsureReady();
+    if (!rootPath) {
         return;
     }
 
     outputChannel.show();
-    const pythonPath = getVenvPythonPath(rootPath);
 
-    // Run project update-robotpy first, then sync
-    const updateCmd = `"${pythonPath}" -m robotpy project update-robotpy`;
-    const syncCmd = `"${pythonPath}" -m robotpy sync`;
+    const updateCmd = buildRobotPyCommand(rootPath, 'project update-robotpy');
+    const syncCmd = buildRobotPyCommand(rootPath, 'sync');
 
-    outputChannel.appendLine(`\n=== Running: ${updateCmd} ===\n`);
+    outputChannel.appendLine(`\n=== Running: ${updateCmd} ===`);
     outputChannel.appendLine(`Then running: ${syncCmd}\n`);
 
     try {
+        outputChannel.appendLine('Starting commands in terminal');
         const terminal = getRobotPyTerminal(rootPath);
         terminal.show();
         terminal.sendText(updateCmd);
         terminal.sendText(syncCmd);
-
-        outputChannel.appendLine(`Commands started in terminal`);
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        outputChannel.appendLine(`Error: ${errorMessage}`);
-        vscode.window.showErrorMessage(`Failed to execute robotpy sync: ${errorMessage}`);
+        handleCommandError(error, 'Failed to execute robotpy sync');
+        vscode.window.showErrorMessage('Failed to execute robotpy sync. Check the output for details.');
     }
 }
 
-async function executeRobotPyCommand(command: string) {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-    }
-
-    const rootPath = workspaceFolders[0].uri.fsPath;
-
-    // Ensure venv and robotpy are set up before running command
-    const isReady = await ensureRobotPyEnvironment(rootPath);
-    if (!isReady) {
+async function executeRobotPyCommand(command: string): Promise<void> {
+    const rootPath = await getWorkspaceRootAndEnsureReady();
+    if (!rootPath) {
         return;
     }
 
     outputChannel.show();
-    const pythonPath = getVenvPythonPath(rootPath);
-    const cmdString = `"${pythonPath}" -m robotpy ${command}`;
+
+    const cmdString = buildRobotPyCommand(rootPath, command);
     outputChannel.appendLine(`\n=== Running: ${cmdString} ===\n`);
 
     try {
+        outputChannel.appendLine(`Starting command in terminal: ${cmdString}`);
         const terminal = getRobotPyTerminal(rootPath);
         terminal.show();
         terminal.sendText(cmdString);
-
-        outputChannel.appendLine(`Command started in terminal: ${cmdString}`);
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        outputChannel.appendLine(`Error: ${errorMessage}`);
-        vscode.window.showErrorMessage(`Failed to execute robotpy ${command}: ${errorMessage}`);
+        handleCommandError(error, `Failed to execute robotpy ${command}`);
+        vscode.window.showErrorMessage(`Failed to execute robotpy ${command}. Check the output for details.`);
     }
 }
