@@ -16,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('robotpy.sync', () => executeRobotPyCommand('sync')),
+        vscode.commands.registerCommand('robotpy.sync', () => executeRobotPySync()),
         vscode.commands.registerCommand('robotpy.sim', () => executeRobotPyCommand('sim')),
         vscode.commands.registerCommand('robotpy.deploy', () => executeRobotPyCommand('deploy')),
         vscode.commands.registerCommand('robotpy.deploySkipTests', () => executeRobotPyCommand('deploy --skip-tests'))
@@ -102,7 +102,13 @@ async function checkRobotPyProject(): Promise<boolean> {
 
         if (content.includes('robotpy')) {
             // This appears to be a RobotPy project, ensure venv and robotpy are set up
-            await ensureRobotPyEnvironment(rootPath);
+            const isReady = await ensureRobotPyEnvironment(rootPath);
+
+            if (isReady) {
+                // Automatically run sync when opening the project
+                await autoRunSync(rootPath);
+            }
+
             return true;
         }
     } catch (error) {
@@ -111,6 +117,34 @@ async function checkRobotPyProject(): Promise<boolean> {
     }
 
     return false;
+}
+
+async function autoRunSync(rootPath: string) {
+    // Run sync automatically in the background
+    const pythonPath = getVenvPythonPath(rootPath);
+    const updateCmd = `"${pythonPath}" -m robotpy project update-robotpy`;
+    const syncCmd = `"${pythonPath}" -m robotpy sync`;
+
+    outputChannel.appendLine('\n=== Auto-running sync on project open ===');
+    outputChannel.appendLine(`Running: ${updateCmd}`);
+    outputChannel.appendLine(`Then: ${syncCmd}\n`);
+
+    try {
+        const terminal = vscode.window.createTerminal({
+            name: 'RobotPy Auto-Sync',
+            cwd: rootPath
+        });
+
+        // Don't show the terminal automatically - let it run in background
+        terminal.sendText(updateCmd);
+        terminal.sendText(syncCmd);
+
+        outputChannel.appendLine('Auto-sync started in background terminal');
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        outputChannel.appendLine(`Auto-sync error: ${errorMessage}`);
+        // Don't show error dialog for auto-sync, just log it
+    }
 }
 
 async function setPythonInterpreter(rootPath: string): Promise<void> {
@@ -257,6 +291,49 @@ async function checkRobotPyInstallation(rootPath: string): Promise<boolean> {
     }
 
     return false;
+}
+
+async function executeRobotPySync() {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+        vscode.window.showErrorMessage('No workspace folder open');
+        return;
+    }
+
+    const rootPath = workspaceFolders[0].uri.fsPath;
+
+    // Ensure venv and robotpy are set up before running command
+    const isReady = await ensureRobotPyEnvironment(rootPath);
+    if (!isReady) {
+        return;
+    }
+
+    outputChannel.show();
+    const pythonPath = getVenvPythonPath(rootPath);
+
+    // Run project update-robotpy first, then sync
+    const updateCmd = `"${pythonPath}" -m robotpy project update-robotpy`;
+    const syncCmd = `"${pythonPath}" -m robotpy sync`;
+
+    outputChannel.appendLine(`\n=== Running: ${updateCmd} ===\n`);
+    outputChannel.appendLine(`Then running: ${syncCmd}\n`);
+
+    try {
+        const terminal = vscode.window.createTerminal({
+            name: 'RobotPy Sync',
+            cwd: rootPath
+        });
+
+        terminal.show();
+        terminal.sendText(updateCmd);
+        terminal.sendText(syncCmd);
+
+        outputChannel.appendLine(`Commands started in terminal`);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        outputChannel.appendLine(`Error: ${errorMessage}`);
+        vscode.window.showErrorMessage(`Failed to execute robotpy sync: ${errorMessage}`);
+    }
 }
 
 async function executeRobotPyCommand(command: string) {

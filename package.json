@@ -60,11 +60,6 @@
       ],
       "editor/title": [
         {
-          "command": "robotpy.sync",
-          "group": "navigation",
-          "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
-        },
-        {
           "command": "robotpy.sim",
           "group": "navigation",
           "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
