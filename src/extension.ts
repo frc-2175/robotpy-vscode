@@ -115,7 +115,7 @@ async function checkRobotPyProject(): Promise<boolean> {
         const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(pyprojectPath));
         const content = Buffer.from(fileContent).toString('utf8');
 
-        if (content.includes('robotpy')) {
+        if (content.includes('[tool.robotpy]')) {
             const isReady = await ensureRobotPyEnvironment(rootPath);
 
             if (isReady) {
@@ -191,7 +191,6 @@ async function createVenv(rootPath: string): Promise<boolean> {
 async function installRobotPy(rootPath: string): Promise<boolean> {
     outputChannel.show();
     outputChannel.appendLine('Installing/upgrading RobotPy...');
-    outputChannel.appendLine('This may take a few minutes...\n');
 
     try {
         const pipPath = getVenvPipPath(rootPath);
@@ -199,8 +198,9 @@ async function installRobotPy(rootPath: string): Promise<boolean> {
 
         const result = await execAsync(cmd, { cwd: rootPath, maxBuffer: 1024 * 1024 * 10 });
         logCommandOutput(result);
-
         outputChannel.appendLine('\nRobotPy installed successfully.');
+
+        await executeRobotPySync();
         return true;
     } catch (error) {
         handleCommandError(error, '\nFailed to install RobotPy');
@@ -212,7 +212,7 @@ async function installRobotPy(rootPath: string): Promise<boolean> {
 async function ensureRobotPyEnvironment(rootPath: string): Promise<boolean> {
     if (!venvExists(rootPath)) {
         const result = await vscode.window.showInformationMessage(
-            'RobotPy requires a virtual environment. Would you like to create one?',
+            'The RobotPy extension requires a virtual environment. Would you like to create one?',
             'Yes',
             'No'
         );
@@ -263,25 +263,10 @@ async function checkRobotPyInstallation(rootPath: string): Promise<boolean> {
     if (isRobotPyInstalled(rootPath)) {
         outputChannel.appendLine('RobotPy installation check passed.');
         return true;
+    } else {
+        outputChannel.appendLine('RobotPy is not installed in the virtual environment. Installing...');
+        return installRobotPy(rootPath);
     }
-
-    // RobotPy is not installed in venv
-    outputChannel.appendLine('RobotPy is not installed in the virtual environment.');
-
-    const result = await vscode.window.showWarningMessage(
-        'RobotPy is not installed in the virtual environment. Would you like to install it?',
-        'Yes',
-        'View Installation Guide',
-        'No'
-    );
-
-    if (result === 'Yes') {
-        return await installRobotPy(rootPath);
-    } else if (result === 'View Installation Guide') {
-        vscode.env.openExternal(vscode.Uri.parse(ROBOTPY_DOCS_URL));
-    }
-
-    return false;
 }
 
 async function getWorkspaceRootAndEnsureReady(): Promise<string | null> {
@@ -312,7 +297,6 @@ async function executeRobotPySync(): Promise<void> {
     outputChannel.appendLine(`Then running: ${syncCmd}\n`);
 
     try {
-        outputChannel.appendLine('Starting commands in terminal');
         const terminal = getRobotPyTerminal(rootPath);
         terminal.show();
         terminal.sendText(updateCmd);
@@ -335,7 +319,6 @@ async function executeRobotPyCommand(command: string): Promise<void> {
     outputChannel.appendLine(`\n=== Running: ${cmdString} ===\n`);
 
     try {
-        outputChannel.appendLine(`Starting command in terminal: ${cmdString}`);
         const terminal = getRobotPyTerminal(rootPath);
         terminal.show();
         terminal.sendText(cmdString);
