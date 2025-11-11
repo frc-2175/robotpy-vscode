@@ -1,0 +1,71 @@
+{
+  "name": "robotpy-vscode",
+  "displayName": "RobotPy",
+  "description": "Commands and menus for RobotPy (FIRST Robotics Competition)",
+  "version": "0.1.0",
+  "publisher": "robotpy",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/pyproject.toml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "robotpy.sync",
+        "title": "RobotPy: Sync",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "robotpy.sim",
+        "title": "RobotPy: Simulate",
+        "icon": "$(vm)"
+      },
+      {
+        "command": "robotpy.deploy",
+        "title": "RobotPy: Deploy",
+        "icon": "$(rocket)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "robotpy.sync",
+          "group": "navigation",
+          "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
+        },
+        {
+          "command": "robotpy.sim",
+          "group": "navigation",
+          "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
+        },
+        {
+          "command": "robotpy.deploy",
+          "group": "navigation",
+          "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  }
+}
