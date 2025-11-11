@@ -43,7 +43,7 @@
     "submenus": [
       {
         "id": "robotpy.deployMenu",
-        "label": "Deploy",
+        "label": "RobotPy: Deploy",
         "icon": "$(robot)"
       }
     ],
@@ -61,13 +61,11 @@
       "editor/title": [
         {
           "command": "robotpy.sim",
-          "group": "navigation",
-          "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
+          "group": "navigation"
         },
         {
           "submenu": "robotpy.deployMenu",
-          "group": "navigation",
-          "when": "resourceFilename == pyproject.toml || resourceFilename == robot.py"
+          "group": "navigation"
         }
       ],
       "commandPalette": [
