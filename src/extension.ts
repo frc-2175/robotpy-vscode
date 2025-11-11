@@ -8,6 +8,7 @@ import * as fs from 'fs';
 const execAsync = promisify(exec);
 
 let outputChannel: vscode.OutputChannel;
+let robotpyTerminal: vscode.Terminal | undefined;
 
 const VENV_DIR = '.venv';
 
@@ -83,6 +84,21 @@ function logCommandOutput(result: { stdout?: string; stderr?: string }) {
     }
 }
 
+function getRobotPyTerminal(rootPath: string): vscode.Terminal {
+    // Check if existing terminal is still alive
+    if (robotpyTerminal && vscode.window.terminals.includes(robotpyTerminal)) {
+        return robotpyTerminal;
+    }
+
+    // Create a new terminal if needed
+    robotpyTerminal = vscode.window.createTerminal({
+        name: 'RobotPy',
+        cwd: rootPath
+    });
+
+    return robotpyTerminal;
+}
+
 async function checkRobotPyProject(): Promise<boolean> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -130,10 +146,7 @@ async function autoRunSync(rootPath: string) {
     outputChannel.appendLine(`Then: ${syncCmd}\n`);
 
     try {
-        const terminal = vscode.window.createTerminal({
-            name: 'RobotPy Auto-Sync',
-            cwd: rootPath
-        });
+        const terminal = getRobotPyTerminal(rootPath);
 
         // Don't show the terminal automatically - let it run in background
         terminal.sendText(updateCmd);
@@ -319,11 +332,7 @@ async function executeRobotPySync() {
     outputChannel.appendLine(`Then running: ${syncCmd}\n`);
 
     try {
-        const terminal = vscode.window.createTerminal({
-            name: 'RobotPy Sync',
-            cwd: rootPath
-        });
-
+        const terminal = getRobotPyTerminal(rootPath);
         terminal.show();
         terminal.sendText(updateCmd);
         terminal.sendText(syncCmd);
@@ -357,11 +366,7 @@ async function executeRobotPyCommand(command: string) {
     outputChannel.appendLine(`\n=== Running: ${cmdString} ===\n`);
 
     try {
-        const terminal = vscode.window.createTerminal({
-            name: `RobotPy ${command}`,
-            cwd: rootPath
-        });
-
+        const terminal = getRobotPyTerminal(rootPath);
         terminal.show();
         terminal.sendText(cmdString);
 
