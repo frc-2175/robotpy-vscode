@@ -3,7 +3,11 @@
   "displayName": "RobotPy",
   "description": "Commands and menus for RobotPy (FIRST Robotics Competition)",
   "version": "0.1.0",
-  "publisher": "robotpy",
+  "publisher": "frc-2175",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frc-2175/robotpy-vscode"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
