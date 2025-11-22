@@ -13,6 +13,6 @@ This extension is designed for beginners and does not attempt to expose all Robo
 
 ## Usage
 
-Once the extension is installed, two new menu items will appear next to the Run button in the editor title bar. The robot button deploys code to a robot (`robotpy deploy`), while the computer button launches the simulator (`robotpy sim`). You can also access RobotPy commands from the command palette by pressing Ctrl-Shift-P (or Cmd-Shift-P on macOS).
+Once the extension is installed, three new menu items will appear next to the Run button in the editor title bar. The robot button deploys code to a robot (`robotpy deploy`), while the computer button launches the simulator (`robotpy sim`). The arrows will run `robotpy sync`. You can also access RobotPy commands from the command palette by pressing Ctrl-Shift-P (or Cmd-Shift-P on macOS).
 
-![the two new buttons](screenshot.png)
+![the new buttons](screenshot.png)
