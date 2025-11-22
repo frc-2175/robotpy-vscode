@@ -215,7 +215,7 @@ async function checkEnvironment(rootPath: string): Promise<[EnvironmentChecks, b
     if (isWindows()) {
         // Check PowerShell execution policy (thank you Microsoft)
         try {
-            const { stdout, stderr } = await execAsync(`powershell -NoProfile -NonInteractive -Command "Get-ExecutionPolicy -Scope Process"`);
+            const { stdout, stderr } = await execAsync(`powershell -NoProfile -NonInteractive -Command "Get-ExecutionPolicy"`);
             const policy = (stdout || stderr).trim().toLowerCase();
             if (["remotesigned", "bypass", "unrestricted"].includes(policy)) {
                 result.winExecutionPolicyOk = true;
