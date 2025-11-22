@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register commands.
     context.subscriptions.push(
-        // TODO: Add init command.
+        vscode.commands.registerCommand('robotpy.init', () => robotpyCommands("init")),
         vscode.commands.registerCommand('robotpy.sync', () => robotpyCommands("project update-robotpy", "sync")),
         vscode.commands.registerCommand('robotpy.sim', () => robotpyCommands("sim")),
         vscode.commands.registerCommand('robotpy.deploy', () => robotpyCommands("deploy")),
@@ -432,9 +432,14 @@ async function onProjectOpen() {
     if (didError) {
         vscode.window.showWarningMessage("There were errors when checking the system environment for RobotPy. See the output log for details.");
     }
+
+    // Quit early on project open if there is no robotpy project file. We do
+    // this here because we do NOT want to prevent people from running
+    // `robotpy init`.
     if (!checks.hasRobotPyProjectFile) {
         return;
     }
+
     const venvOk = await ensureVenv(rootPath, checks);
     if (!venvOk) {
         return;

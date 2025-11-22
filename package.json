@@ -21,6 +21,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "robotpy.init",
+        "title": "RobotPy: Init Project"
+      },
+      {
         "command": "robotpy.sync",
         "title": "RobotPy: Sync",
         "icon": "$(sync)"
