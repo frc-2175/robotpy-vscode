@@ -64,20 +64,16 @@
       ],
       "editor/title": [
         {
+          "command": "robotpy.sync",
+          "group": "navigation"
+        },
+        {
           "command": "robotpy.sim",
           "group": "navigation"
         },
         {
           "submenu": "robotpy.deployMenu",
           "group": "navigation"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "robotpy.deploy"
-        },
-        {
-          "command": "robotpy.deploySkipTests"
         }
       ]
     }
