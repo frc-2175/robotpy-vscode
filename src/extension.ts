@@ -181,7 +181,7 @@ async function checkEnvironment(rootPath: string): Promise<[EnvironmentChecks, b
             result.isSystemPythonNewEnough = true;
 
             try {
-                await execAsync(`${systemPython.cmd} -c "import venv"`);
+                await execAsync(`${systemPython.cmd.join(" ")} -c "import venv"`);
                 result.hasSystemPythonVenvModule = true;
             } catch (e) {
                 // Empty catch should be ok here because we just verified that
@@ -203,7 +203,7 @@ async function checkEnvironment(rootPath: string): Promise<[EnvironmentChecks, b
                 result.isVenvPythonNewEnough = true;
 
                 try {
-                    await execAsync(`${venvPython.cmd} -c "import robotpy"`);
+                    await execAsync(`${venvPython.cmd.join(" ")} -c "import robotpy"`);
                     result.isVenvReady = true;
                 } catch (e) {
                     outputChannel.appendLine(`Expected (?) error when checking for robotpy in venv: ${e}`);
