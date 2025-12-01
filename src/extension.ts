@@ -384,7 +384,15 @@ async function execFancy(cmd: string, args: readonly string[], opts: ExecFancyOp
 
     let stdout = "", stderr = "";
     await new Promise<void>((res, rej) => {
-        const proc = spawn(cmd, args, { ...opts, stdio: "pipe" });
+        const proc = spawn(cmd, args, {
+            ...opts,
+            stdio: "pipe",
+            env: {
+                ...process.env,
+                "PYTHONUNBUFFERED": "1",
+                ...opts.env,
+            }
+        });
         currentProcess = { proc, cmdString, prettyName };
         proc.stdout.on("data", data => {
             stdout += data.toString();
