@@ -643,6 +643,14 @@ function mustGetRootPath(): string {
     return workspaceFolders[0].uri.fsPath;
 }
 
+async function saveCurrentFile(): Promise<boolean> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        return false;
+    }
+    return await editor.document.save();
+}
+
 async function robotpyCommands(...cmds: string[][]) {
     await extensionInitialized;
 
@@ -655,6 +663,10 @@ async function robotpyCommands(...cmds: string[][]) {
         }
     }
 
+    if (!await saveCurrentFile()) {
+        vscode.window.showWarningMessage("Failed to save current file. Results may not be what you expect.");
+        return;
+    }
     if (!await ensureRobotPyReady()) {
         return;
     }
