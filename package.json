@@ -2,7 +2,7 @@
   "name": "robotpy-vscode",
   "displayName": "RobotPy",
   "description": "Commands and menus for RobotPy (FIRST Robotics Competition)",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "frc-2175",
   "repository": {
     "type": "git",
